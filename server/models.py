@@ -67,19 +67,11 @@ class User(db.Model, BaseMixin, UserMixin):
         return self.username
 
 
-class BlacklistToken(db.Model):
+class BlacklistToken(db.Model, BaseMixin):
     """
     Token Model for storing JWT tokens
     """
-    __tablename__ = 'blacklist_tokens'
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     token = db.Column(db.String(500), unique=True, nullable=False)
-    blacklisted_on = db.Column(db.DateTime, nullable=False)
-
-    def __init__(self, token):
-        self.token = token
-        self.blacklisted_on = datetime.datetime.now()
 
     def __repr__(self):
         return '<id: token: {}'.format(self.token)
@@ -92,6 +84,7 @@ class BlacklistToken(db.Model):
             return True
         else:
             return False
+
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
