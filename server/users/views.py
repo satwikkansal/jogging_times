@@ -3,9 +3,12 @@ import os
 from flask import Blueprint, request, make_response, jsonify
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
-    get_raw_jwt)
+    get_raw_jwt, get_jwt_claims)
+from flask_security import roles_required, roles_accepted
+from sqlalchemy.exc import IntegrityError
 
-from server.models import db, bcrypt, User, BlacklistToken, user_datastore
+
+from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
 
 user_blueprint = Blueprint('users', __name__)
 jwt = JWTManager()
@@ -14,8 +17,7 @@ jwt = JWTManager()
 @jwt.user_claims_loader
 def add_claims_to_access_token(user: User):
     return {
-        'username': user.username,
-        'roles': user.roles
+        'id': user.username
     }
 
 
@@ -37,14 +39,21 @@ def create_user():
     username = post_data.get('username'),
     password = post_data.get('password')
     email = post_data.get('email')
+    roles = post_data.get('roles', ["user"])
     # check if user already exists
-    user = User.query.filter_by(username=post_data.get('username')).first()
+    user = User.query.filter_by(username=username).first()
     if not user:
         password = bcrypt.generate_password_hash(
-            password, os.getenv('BCRYPT_LOG_ROUNDS'))
-        user = User(username=username, password=password, email=email)
-        # insert the user
-        User.save(user)
+            password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
+
+        role_objects = []
+        for role in roles:
+            role_objects.append(Role.query.filter_by(name=role).first())
+
+        user = User(username=username, password=password, email=email, roles=role_objects)
+
+        user.save()
+
         # generate the auth token
         access_token = create_access_token(identity=user)
 
@@ -63,7 +72,7 @@ def create_user():
 
 
 @user_blueprint.route('/login', methods=["POST"])
-def login(self):
+def login():
     # get the post data
     post_data = request.get_json()
     # fetch the user data
@@ -86,9 +95,25 @@ def login(self):
 
 @user_blueprint.route('/logout', methods=["POST"])
 @jwt_required
-def logout(self):
+def logout():
     jti = get_raw_jwt()['jti']
     blacklist_entry = BlacklistToken(token=jti)
-    db.session.add(blacklist_entry)
-    db.session.commit()
-    return jsonify({"msg": "Successfully logged out"}), 200
+    try:
+        blacklist_entry.save()
+        return jsonify({"msg": "Logged out successfully"}), 200
+    except IntegrityError as e:
+        return jsonify({"msg": "Already logged out"}), 200
+
+
+@user_blueprint.route('/list', methods=["POST"])
+@jwt_required
+def get_user_list():
+    accepted_roles = ['admin', 'usermanager']
+    username = get_jwt_claims()['id']
+    user = User.query.filter_by(username=username).first()
+
+    for role in accepted_roles:
+        if user.has_role(role):
+            return "Here's your user list", 200
+    else:
+        return "User not authorized to view the list", 403
