@@ -1,14 +1,14 @@
 import os
 
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, request, make_response, jsonify, abort
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
-    get_raw_jwt, get_jwt_claims)
-from flask_security import roles_required, roles_accepted
+    get_raw_jwt)
 from sqlalchemy.exc import IntegrityError
 
 
 from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
+from server.utils.decorators import roles_accepted
 
 user_blueprint = Blueprint('users', __name__)
 jwt = JWTManager()
@@ -106,14 +106,6 @@ def logout():
 
 
 @user_blueprint.route('/list', methods=["POST"])
-@jwt_required
+@roles_accepted('admin', 'usermanager')
 def get_user_list():
-    accepted_roles = ['admin', 'usermanager']
-    username = get_jwt_claims()['id']
-    user = User.query.filter_by(username=username).first()
-
-    for role in accepted_roles:
-        if user.has_role(role):
-            return "Here's your user list", 200
-    else:
-        return "User not authorized to view the list", 403
+    return "Here's your user list", 200
