@@ -11,3 +11,4 @@ flask_testing>=0.7
 flask_jwt_extended
 psycopg2
 python-dotenv
+flask_rest_jsonapi
