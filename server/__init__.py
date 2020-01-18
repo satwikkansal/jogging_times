@@ -3,7 +3,7 @@ import os
 
 from flask import Flask
 
-from server.users.views import user_blueprint, jwt
+from server.users.views import user_blueprint, jwt, api
 from server.models import bcrypt, db
 
 STATIC_FOLDER = './../client/static'
@@ -20,6 +20,7 @@ app.config.from_object(app_settings)
 bcrypt.init_app(app)
 db.init_app(app)
 jwt.init_app(app)
+api.init_app(app)
 
 # Blueprints
 app.register_blueprint(user_blueprint, url_prefix='/user')

@@ -6,6 +6,7 @@ from datetime import datetime
 from flask_bcrypt import Bcrypt
 from flask_security import SQLAlchemyUserDatastore, RoleMixin, UserMixin, Security
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import relationship
 
 
 bcrypt = Bcrypt()
@@ -14,7 +15,7 @@ db = SQLAlchemy()
 # Define models
 roles_users = db.Table(
     'roles_users',
-    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+    db.Column('user_id', db.String(), db.ForeignKey('user.id')),
     db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))
 )
 
@@ -46,7 +47,7 @@ class Role(db.Model, BaseMixin, RoleMixin):
 
 
 class User(db.Model, BaseMixin, UserMixin):
-    username = db.Column(db.String(255), unique=True, nullable=False)
+    id = db.Column(db.String(255), primary_key=True)
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255), unique=True)
@@ -64,7 +65,7 @@ class User(db.Model, BaseMixin, UserMixin):
         return bcrypt.check_password_hash(self.password, password)
 
     def __str__(self):
-        return self.username
+        return self.user_id
 
 
 class BlacklistToken(db.Model, BaseMixin):
@@ -91,4 +92,21 @@ user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(datastore=user_datastore)
 
 
+class Weather(db.Model, BaseMixin):
+    pass
 
+
+class Run(db.Model, BaseMixin):
+    user_id = db.Column(db.String, db.ForeignKey(User.id))
+    weather_id = db.Column(db.Integer, db.ForeignKey(Weather.id))
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
+    # Distance in meters
+    distance = db.Column(db.Integer)
+    start_lat = db.Column(db.String(20))
+    start_lng = db.Column(db.String(20))
+    end_lat = db.Column(db.String(20))
+    end_lng = db.Column(db.String(20))
+
+    user = db.relationship('User', foreign_keys='Run.user_id')
+    weather = db.relationship('Weather', foreign_keys='Run.weather_id')

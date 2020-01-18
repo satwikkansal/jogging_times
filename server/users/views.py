@@ -4,10 +4,12 @@ from flask import Blueprint, request, make_response, jsonify, abort
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
     get_raw_jwt)
+from flask_rest_jsonapi import Api
 from sqlalchemy.exc import IntegrityError
 
 
 from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
+from server.resources import UserList, UserDetail, RunsList, RunDetail
 from server.utils.decorators import roles_accepted
 
 user_blueprint = Blueprint('users', __name__)
@@ -17,13 +19,13 @@ jwt = JWTManager()
 @jwt.user_claims_loader
 def add_claims_to_access_token(user: User):
     return {
-        'id': user.username
+        'id': user.user_id
     }
 
 
 @jwt.user_identity_loader
 def user_identity_lookup(user):
-    return user.username
+    return user.user_id
 
 
 @jwt.token_in_blacklist_loader
@@ -36,12 +38,12 @@ def check_if_token_in_blacklist(decrypted_token):
 def create_user():
     # get the post data
     post_data = request.get_json()
-    username = post_data.get('username'),
+    user_id = post_data.get('user_id'),
     password = post_data.get('password')
     email = post_data.get('email')
     roles = post_data.get('roles', ["user"])
     # check if user already exists
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(user_id=user_id).first()
     if not user:
         password = bcrypt.generate_password_hash(
             password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
@@ -50,7 +52,7 @@ def create_user():
         for role in roles:
             role_objects.append(Role.query.filter_by(name=role).first())
 
-        user = User(username=username, password=password, email=email, roles=role_objects)
+        user = User(user_id=user_id, password=password, email=email, roles=role_objects)
 
         user.save()
 
@@ -76,7 +78,7 @@ def login():
     # get the post data
     post_data = request.get_json()
     # fetch the user data
-    user = user_datastore.find_user(username=post_data.get('username'))
+    user = user_datastore.find_user(user_id=post_data.get('user_id'))
     if user and user.verify_password(post_data.get('password')):
         access_token = create_access_token(identity=user)
         response_object = {
@@ -109,3 +111,10 @@ def logout():
 @roles_accepted('admin', 'usermanager')
 def get_user_list():
     return "Here's your user list", 200
+
+
+api = Api()
+api.route(UserList, 'user_list', '/users')
+api.route(UserDetail, 'user_detail', '/users/<string:id>')
+api.route(RunsList, 'runs_list', '/runs')
+api.route(RunDetail, 'run_detail', '/runs/<int:id>')
