@@ -8,7 +8,7 @@ from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 
 from server import app
-from server.models import db
+from server.models import db, Role
 
 migrate = Migrate(app, db)
 manager = Manager(app)
@@ -19,7 +19,9 @@ manager.add_command('db', MigrateCommand)
 
 @manager.command
 def test():
-    """Runs the unit tests without test coverage."""
+    """
+    Runs the unit tests without test coverage.
+    """
     tests = unittest.TestLoader().discover('./tests', pattern='test*.py')
     result = unittest.TextTestRunner(verbosity=2).run(tests)
     if result.wasSuccessful():
@@ -29,7 +31,9 @@ def test():
 
 @manager.command
 def cov():
-    """Runs the unit tests with coverage."""
+    """
+    Runs the unit tests with coverage.
+    """
     COV = coverage.coverage(
         branch=True,
         include='server/*',
@@ -62,6 +66,7 @@ def create_db():
     Creates the db tables.
     """
     db.create_all()
+    populate_roles()
 
 
 @manager.command
@@ -70,6 +75,12 @@ def drop_db():
     Drops the db tables.
     """
     db.drop_all()
+
+
+def populate_roles():
+    Role(name="admin", description="Admin role").save()
+    Role(name="usermanager", description="User Manager role").save()
+    Role(name="user", description="User role").save()
 
 
 if __name__ == '__main__':
