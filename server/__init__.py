@@ -3,7 +3,7 @@ import os
 
 from flask import Flask
 
-from server.users.views import user_blueprint, jwt, api
+from server.users.views import auth_blueprint, jwt, api
 from server.models import bcrypt, db
 
 STATIC_FOLDER = './../client/static'
@@ -23,7 +23,7 @@ jwt.init_app(app)
 api.init_app(app)
 
 # Blueprints
-app.register_blueprint(user_blueprint, url_prefix='/user')
+app.register_blueprint(auth_blueprint, url_prefix='/user')
 
 if __name__ == "__main__":
     port = os.getenv("PORT", 5000)

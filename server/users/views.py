@@ -12,7 +12,7 @@ from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
 from server.resources import UserList, UserDetail, RunsList, RunDetail
 from server.utils.decorators import roles_accepted
 
-user_blueprint = Blueprint('users', __name__)
+auth_blueprint = Blueprint('/auth', __name__)
 jwt = JWTManager()
 
 
@@ -34,7 +34,7 @@ def check_if_token_in_blacklist(decrypted_token):
     BlacklistToken.check_blacklist(jti)
 
 
-@user_blueprint.route('/new', methods=["POST"])
+@auth_blueprint.route('/new', methods=["POST"])
 def create_user():
     # get the post data
     post_data = request.get_json()
@@ -73,7 +73,7 @@ def create_user():
         return make_response(jsonify(response_object)), 202
 
 
-@user_blueprint.route('/login', methods=["POST"])
+@auth_blueprint.route('/login', methods=["POST"])
 def login():
     # get the post data
     post_data = request.get_json()
@@ -95,7 +95,7 @@ def login():
         return make_response(jsonify(response_object)), 404
 
 
-@user_blueprint.route('/logout', methods=["POST"])
+@auth_blueprint.route('/logout', methods=["POST"])
 @jwt_required
 def logout():
     jti = get_raw_jwt()['jti']
@@ -105,12 +105,6 @@ def logout():
         return jsonify({"msg": "Logged out successfully"}), 200
     except IntegrityError as e:
         return jsonify({"msg": "Already logged out"}), 200
-
-
-@user_blueprint.route('/list', methods=["POST"])
-@roles_accepted('admin', 'usermanager')
-def get_user_list():
-    return "Here's your user list", 200
 
 
 api = Api()
