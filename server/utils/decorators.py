@@ -17,7 +17,7 @@ def roles_accepted(*roles):
         def wrapper(*args, **kwargs):
             verify_jwt_in_request()
             user_id = get_jwt_claims()['id']
-            user = User.query.filter_by(user_id=user_id).first()
+            user = User.query.filter_by(id=user_id).first()
             for role in roles:
                 if user.has_role(role):
                     return fn(*args, **kwargs)

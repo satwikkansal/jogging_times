@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 
 from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
 from server.resources import UserList, UserDetail, RunsList, RunDetail
-from server.utils.decorators import roles_accepted
 
 auth_blueprint = Blueprint('/auth', __name__)
 jwt = JWTManager()
@@ -19,13 +18,13 @@ jwt = JWTManager()
 @jwt.user_claims_loader
 def add_claims_to_access_token(user: User):
     return {
-        'id': user.user_id
+        'id': user.id
     }
 
 
 @jwt.user_identity_loader
 def user_identity_lookup(user):
-    return user.user_id
+    return user.id
 
 
 @jwt.token_in_blacklist_loader
@@ -78,7 +77,7 @@ def login():
     # get the post data
     post_data = request.get_json()
     # fetch the user data
-    user = user_datastore.find_user(user_id=post_data.get('user_id'))
+    user = user_datastore.find_user(id=post_data.get('user_id'))
     if user and user.verify_password(post_data.get('password')):
         access_token = create_access_token(identity=user)
         response_object = {

@@ -1,25 +1,26 @@
+from datetime import datetime
 import os
 
-from flask_rest_jsonapi import Api, ResourceDetail, ResourceList
+from flask_jwt_extended import get_jwt_claims
+from flask_rest_jsonapi import ResourceDetail, ResourceList
 from marshmallow import validate
 from marshmallow_jsonapi.flask import Schema, Relationship
 from marshmallow_jsonapi import fields
-from werkzeug.datastructures import ImmutableMultiDict
 
 from server.models import db, User, Run, bcrypt, Role
 from server.utils.decorators import roles_accepted
 
-ImmutableMultiDict
 
 ###
 # Data abstractions
 ###
+from server.utils.weather import get_current_weather_at_location
+
+
 class UserSchema(Schema):
     id = fields.Str()
     first_name = fields.Str()
     last_name = fields.Str()
-    # TODO: Exclude password
-    # https://github.com/marshmallow-code/flask-marshmallow/issues/50
     password = fields.Str(required=True, validate=[validate.Length(min=6, max=36)], load_only=True)
     email = fields.Email(allow_none=True, validate=validate.Email(error="Not a valid email address"))
     roles = fields.List(fields.String())
@@ -37,14 +38,16 @@ class RunSchema(Schema):
     # Dump only can only be applied to auto IDs
     id = fields.Integer(dump_only=True)
     user_id = fields.String(load_only=True)
-    start_time = fields.DateTime()
-    end_time = fields.DateTime()
+    start_time = fields.DateTime(required=True)
+    end_time = fields.DateTime(required=True)
+    date = fields.String(dump_only=True)
     # Distance in meters
-    distance = fields.Integer(as_string=True)
-    start_lat = fields.Float(as_string=True)
-    start_lng = fields.Float(as_string=True)
-    end_lat = fields.Float(as_string=True)
-    end_lng = fields.Float(as_string=True)
+    distance = fields.Integer(required=True, as_string=True)
+    start_lat = fields.Float(required=True, as_string=True)
+    start_lng = fields.Float(required=True, as_string=True)
+    end_lat = fields.Float(required=True, as_string=True)
+    end_lng = fields.Float(required=True, as_string=True)
+    weather_info = fields.String(dump_only=True)
 
     class Meta:
         type_ = 'run'
@@ -73,8 +76,9 @@ class UserList(ResourceList):
     """
 
     def create_object(self, data, kwargs):
+        password = data['password'].encode('utf-8')
         data['password'] = bcrypt.generate_password_hash(
-            data['password'], os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
+            password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
 
         role_objects = []
         for role in data['roles']:
@@ -109,14 +113,22 @@ class UserDetail(ResourceDetail):
 class RunsList(ResourceList):
     schema = RunSchema
 
+    @roles_accepted("user")
     def before_get(self, args, kwargs):
         pass
 
     def query(self, view_kwargs):
         query_ = self.session.query(Run)
-        # TODO: Filter here
-        query_ = query_.filter(Run.user_id == "samid")
-        return query_
+        user_id = get_jwt_claims().get('id')
+        if user_id is None:
+            raise ValueError("No ID found in the JWT token claims")
+        return query_.filter(Run.user_id == user_id)
+
+    def create_object(self, data, kwargs):
+        lat, lng = data['end_lat'], data['end_lng']
+        data['weather_info'] = get_current_weather_at_location(lat, lng)
+        data['date'] = data['start_time'].strftime("%Y-%m-%d")
+        return self._data_layer.create_object(data, kwargs)
 
     data_layer = {
         'session': db.session,
