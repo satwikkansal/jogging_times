@@ -1,6 +1,6 @@
 import os
 
-from flask import Blueprint, request, make_response, jsonify, abort
+from flask import Blueprint, request, make_response, jsonify
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
     get_raw_jwt)
