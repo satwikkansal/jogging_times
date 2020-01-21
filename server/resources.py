@@ -6,6 +6,7 @@ from flask_rest_jsonapi import ResourceDetail, ResourceList
 from marshmallow import validate
 from marshmallow_jsonapi.flask import Schema, Relationship
 from marshmallow_jsonapi import fields
+from sqlalchemy import func
 
 from server.models import db, User, Run, bcrypt, Role
 from server.utils.decorators import roles_accepted
@@ -61,6 +62,19 @@ class RunSchema(Schema):
                         related_view_kwargs={'id': '<user.id>'},
                         schema='UserSchema',
                         type_='user')
+
+
+class WeeklyRunsReport(Schema):
+    id = fields.Integer(dump_only=True)
+    average_speed = fields.Float(as_string=True, dump_only=True)
+    average_distance = fields.Float(as_string=True, dump_only=True)
+    average_duration = fields.Float(as_string=True, dump_only=True)
+    week_number = fields.Integer()
+    year = fields.Integer()
+
+    class Meta:
+        type_ = 'report'
+        self_view_many = 'weekly_summary'
 
 
 ###
@@ -129,6 +143,30 @@ class RunsList(ResourceList):
         data['weather_info'] = get_current_weather_at_location(lat, lng)
         data['date'] = data['start_time'].strftime("%Y-%m-%d")
         return self._data_layer.create_object(data, kwargs)
+
+    data_layer = {
+        'session': db.session,
+        'model': Run,
+        'methods': {
+            'query': query
+        }
+    }
+
+
+class WeeklySummary(ResourceList):
+    schema = WeeklyRunsReport
+
+    def query(self, view_kwargs):
+        week_number = func.date_part('week', Run.start_time)
+        year = func.date_part('year', Run.start_time)
+        query_ = self.session.query(
+            func.avg(Run.distance).label('average_distance'),
+            func.avg(Run.duration).label('average_duration'),
+            func.avg(Run.distance / Run.duration).label('average_speed'),
+            week_number.label('week_number'),
+            year.label('year')
+        ).group_by(year, week_number)
+        return query_
 
     data_layer = {
         'session': db.session,

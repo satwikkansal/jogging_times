@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 
 from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
-from server.resources import UserList, UserDetail, RunsList, RunDetail
+from server.resources import UserList, UserDetail, RunsList, RunDetail, WeeklySummary
 
 auth_blueprint = Blueprint('/auth', __name__)
 jwt = JWTManager()
@@ -111,3 +111,4 @@ api.route(UserList, 'user_list', '/users')
 api.route(UserDetail, 'user_detail', '/users/<string:id>')
 api.route(RunsList, 'runs_list', '/runs')
 api.route(RunDetail, 'run_detail', '/runs/<int:id>')
+api.route(WeeklySummary, 'weekly_summary', '/runs/summary/')

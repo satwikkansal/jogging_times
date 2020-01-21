@@ -102,6 +102,8 @@ class Run(db.Model, BaseMixin):
     end_lat = db.Column(db.String(20))
     end_lng = db.Column(db.String(20))
     date = db.Column(db.String(11))
+    # Duration in seconds
+    duration = db.Column(db.Integer)
     weather_info = db.Column(db.String())
 
     user = db.relationship('User', foreign_keys='Run.user_id')
