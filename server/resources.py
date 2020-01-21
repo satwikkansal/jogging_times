@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 
 from flask_jwt_extended import get_jwt_claims
-from flask_rest_jsonapi import ResourceDetail, ResourceList
+from flask_rest_jsonapi import ResourceDetail, ResourceList, JsonApiException
 from marshmallow import validate
 from marshmallow_jsonapi.flask import Schema, Relationship
 from marshmallow_jsonapi import fields
@@ -83,22 +83,29 @@ class WeeklyRunsReport(Schema):
 class UserList(ResourceList):
     schema = UserSchema
 
-    """
     @roles_accepted("admin", "usermanager")
     def before_get(*args, **kwargs):
         pass
-    """
+
+    @roles_accepted("admin", "usermanager")
+    def before_post(*args, **kwargs):
+        pass
 
     def create_object(self, data, kwargs):
         password = data['password'].encode('utf-8')
-        data['password'] = bcrypt.generate_password_hash(
-            password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
+        data['password'] = User.get_password_hash(password)
 
         role_objects = []
         for role in data['roles']:
             role_objects.append(Role.query.filter_by(name=role).first())
         data['roles'] = role_objects
-        return self._data_layer.create_object(data, kwargs)
+        try:
+            return self._data_layer.create_object(data, kwargs)
+        except JsonApiException as e:
+            if 'psycopg2.errors.UniqueViolation' in str(e):
+                e.status = 409
+                e.title = "The user_id already exists."
+            raise e
 
     data_layer = {
         'session': db.session,
