@@ -3,7 +3,7 @@ import os
 
 from flask import Flask
 
-from server.users.views import auth_blueprint, jwt, api
+from server.views import auth_blueprint, jwt, api
 from server.models import bcrypt, db
 
 STATIC_FOLDER = './../client/static'
