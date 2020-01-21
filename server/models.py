@@ -1,6 +1,7 @@
 ###
 # DB configurations and models
 ###
+import os
 from datetime import datetime
 
 from flask_bcrypt import Bcrypt
@@ -62,6 +63,11 @@ class User(db.Model, BaseMixin, UserMixin):
         :return:
         """
         return bcrypt.check_password_hash(self.password, password)
+
+    @staticmethod
+    def get_password_hash(password):
+        return bcrypt.generate_password_hash(
+            password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
 
     def __str__(self):
         return self.user_id
