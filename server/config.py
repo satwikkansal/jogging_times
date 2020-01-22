@@ -15,6 +15,7 @@ class BaseConfig:
     SECURITY_TRACKABLE= True
     JWT_BLACKLIST_ENABLED = True
     JWT_BLACKLIST_TOKEN_CHECKS = ['access']
+    JWT_ERROR_MESSAGE_KEY = "message"
 
 
 class DevelopmentConfig(BaseConfig):

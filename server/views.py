@@ -30,7 +30,7 @@ def user_identity_lookup(user):
 @jwt.token_in_blacklist_loader
 def check_if_token_in_blacklist(decrypted_token):
     jti = decrypted_token['jti']
-    BlacklistToken.check_blacklist(jti)
+    return BlacklistToken.check_blacklist(jti)
 
 
 @auth_blueprint.route('/new', methods=["POST"])
@@ -101,9 +101,9 @@ def logout():
     blacklist_entry = BlacklistToken(token=jti)
     try:
         blacklist_entry.save()
-        return jsonify({"msg": "Logged out successfully"}), 200
+        return jsonify({"message": "Logged out successfully"}), 200
     except IntegrityError as e:
-        return jsonify({"msg": "Already logged out"}), 200
+        return jsonify({"message": "Already logged out"}), 200
 
 
 api = Api()

@@ -74,6 +74,14 @@ class BaseTestCase(TestCase):
         self.assertStatus(response, 200)
         return response.get_json()['auth_token']
 
+    def log_out_user(self, auth_token):
+        return self.client.post(
+            '/user/logout',
+            content_type='application/json',
+            headers=dict(Authorization='Bearer ' + auth_token)
+        )
+
+
 
 def create_admin_user():
     User(id='admin',
