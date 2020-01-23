@@ -34,7 +34,7 @@ def get_user_from_jwt():
         raise_permission_denied_exception("Unable to fetch existing user from JWT")
 
 
-def roles_accepted(*roles, role_validator=None):
+def roles_accepted(*roles):
     """
     Verifies JWT exists, pulls out the users and checks for access restrictions based on the
     allowed roles.
@@ -44,7 +44,7 @@ def roles_accepted(*roles, role_validator=None):
         def wrapper(*args, **kwargs):
             user = get_user_from_jwt()
             for role in roles:
-                if user.has_role(role) and role_validator(user.roles, ["user"]):
+                if user.has_role(role):
                     return fn(*args, **kwargs)
             else:
                 abort(make_response(jsonify(message="User not authorized for this resource"), 403))
