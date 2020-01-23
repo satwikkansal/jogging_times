@@ -43,7 +43,57 @@ class BaseTestCase(TestCase):
         self.assertStatus(response, code)
         self.assertTrue(response.content_type, content_type)
 
-    def create_user(self, user_id, auth_token, password="random", roles=['user']):
+    def make_post_request(self, endpoint, data, auth_token=None):
+        headers = None
+        if auth_token is not None:
+            headers = dict(Authorization='Bearer ' + auth_token)
+        response = self.client.post(
+            endpoint,
+            data=data,
+            content_type='application/json',
+            headers=headers
+        )
+        return response
+
+    def make_get_request(self, endpoint, auth_token=None):
+        headers = None
+        if auth_token is not None:
+            headers = dict(Authorization='Bearer ' + auth_token)
+        response = self.client.get(
+            endpoint,
+            content_type='application/json',
+            headers=headers
+        )
+        return response
+
+    def make_delete_request(self, endpoint, auth_token=None):
+        headers = None
+        if auth_token is not None:
+            headers = dict(Authorization='Bearer ' + auth_token)
+        response = self.client.delete(
+            endpoint,
+            content_type='application/json',
+            headers=headers
+        )
+        return response
+
+    def make_patch_request(self, endpoint, data, auth_token=None):
+        headers = None
+        if auth_token is not None:
+            headers = dict(Authorization='Bearer ' + auth_token)
+
+        if type(data) is dict:
+            data = json.dumps(data)
+
+        response = self.client.patch(
+            endpoint,
+            data=data,
+            content_type='application/json',
+            headers=headers
+        )
+        return response
+
+    def create_user(self, user_id, auth_token=None, password="random", roles=['user']):
         """
         Creates a new user.
         """
@@ -51,23 +101,14 @@ class BaseTestCase(TestCase):
                                                attributes={'password': password,
                                                            "email": f"{user_id}@testmail.com",
                                                            "roles": roles})
-        response = self.client.post(
-            '/users',
-            data=payload,
-            content_type='application/json',
-            headers=dict(Authorization='Bearer ' + auth_token)
-        )
-        return response
+        return self.make_post_request("/users", payload, auth_token)
 
     def login_user(self, user_id, password="random"):
-        return self.client.post(
-            '/user/login',
-            data=json.dumps(dict(
-                user_id=user_id,
-                password=password
-            )),
-            content_type='application/json',
-        )
+        data = json.dumps(dict(
+            user_id=user_id,
+            password=password
+        ))
+        return self.make_post_request('/user/login', data)
 
     def get_login_token(self, user_id, password="random"):
         response = self.login_user(user_id, password)
@@ -75,12 +116,7 @@ class BaseTestCase(TestCase):
         return response.get_json()['auth_token']
 
     def log_out_user(self, auth_token):
-        return self.client.post(
-            '/user/logout',
-            content_type='application/json',
-            headers=dict(Authorization='Bearer ' + auth_token)
-        )
-
+        return self.make_post_request('/user/logout', data=None, auth_token=auth_token)
 
 
 def create_admin_user():
@@ -91,7 +127,6 @@ def create_admin_user():
 
 
 def populate_roles():
-    Role(name="admin", description="Admin role").save()
-    Role(name="usermanager", description="User Manager role").save()
+    Role(name="admin", description="Admin role", privileged=True).save()
+    Role(name="usermanager", description="User Manager role", privileged=True).save()
     Role(name="user", description="User role").save()
-
