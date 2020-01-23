@@ -25,6 +25,7 @@ class DevelopmentConfig(BaseConfig):
     DEBUG = True
     BCRYPT_LOG_ROUNDS = 4
     SQLALCHEMY_DATABASE_URI = postgres_local_base + database_name
+    JWT_ACCESS_TOKEN_EXPIRES = False
 
 
 class TestingConfig(BaseConfig):
