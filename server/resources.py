@@ -1,14 +1,17 @@
 from flask_jwt_extended import get_jwt_claims
-from flask_rest_jsonapi import ResourceDetail, ResourceList, JsonApiException
+from flask_rest_jsonapi import Api, ResourceDetail, ResourceList, JsonApiException
 from marshmallow_jsonapi.flask import Schema
 from marshmallow_jsonapi import fields
 from sqlalchemy import func
 
-from server.models import db, User, Run, Role
+from server.models import db, User, Run, Role, user_datastore
 from server.schemas import UserSchema, RunSchema
-from server.utils.decorators import roles_accepted
+from server.utils.decorators import roles_accepted, get_user_from_jwt, \
+    raise_permission_denied_exception
 
 from server.utils.weather import get_current_weather_at_location
+
+api = Api()
 
 
 class WeeklyRunsReport(Schema):
@@ -30,13 +33,29 @@ class WeeklyRunsReport(Schema):
 class UserList(ResourceList):
     schema = UserSchema
 
-    @roles_accepted("admin", "usermanager")
-    def before_get(*args, **kwargs):
-        pass
+    def query(self, view_kwargs):
+        """
+        Restricts results for GET requests.
+        """
+        query_ = self.session.query(User)
+        user = get_user_from_jwt()
+        if not user.is_privileged():
+            query_ = query_.filter(User.id == user.id)
+        return query_
 
-    @roles_accepted("admin", "usermanager")
     def before_post(*args, **kwargs):
-        pass
+        """
+        Validates authorization for POST requests.
+        """
+        data = kwargs['data']
+        privileged_roles = [role.name for role in Role.query.filter_by(privileged=True).all()]
+        if list(set(privileged_roles) & set(data['roles'])):
+            # Only Admin can create privileged users.
+            user = get_user_from_jwt()
+            if not user or not user.has_role("admin"):
+                raise_permission_denied_exception(
+                    "Only admins can create users with privileged roles"
+                )
 
     def create_object(self, data, kwargs):
         password = data['password'].encode('utf-8')
@@ -51,30 +70,53 @@ class UserList(ResourceList):
         except JsonApiException as e:
             if 'psycopg2.errors.UniqueViolation' in str(e):
                 e.status = 409
-                e.title = "The user_id already exists."
+                e.title = "The user_id or email already exists."
             raise e
 
     data_layer = {
         'session': db.session,
-        'model': User
+        'model': User,
+        'methods': {
+            'query': query
+        }
     }
 
 
 class UserDetail(ResourceDetail):
-    """
-    @roles_accepted("admin", "usermanager", "user")
-    def before_post(*args, **kwargs):
-        pass
+    def self_or_privileged_user(view_id):
+        user = get_user_from_jwt()
+        return user.is_privileged() or user.id == view_id
 
-    @roles_accepted("admin", "usermanager", "user")
-    def before_get(*args, **kwargs):
-        pass
-    """
+    def is_allowed_to_modify(user_to_modify):
+        user = get_user_from_jwt()
+        if user.has_role("admin") or user.id == user_to_modify.id:
+            return True
+        if user.has_role("usermanager"):
+            modifying_privileged_user = user_to_modify.is_privileged()
+            return False if modifying_privileged_user else True
+        return False
+
+    def before_get_object(self, view_kwargs):
+        if not UserDetail.self_or_privileged_user(view_kwargs.get('id')):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
+
+    def before_update_object(self, obj, data, view_kwargs):
+        if not UserDetail.is_allowed_to_modify(obj):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
+
+    def before_delete_object(self, obj, view_kwargs):
+        if not UserDetail.is_allowed_to_modify(obj):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
 
     schema = UserSchema
     data_layer = {
         'session': db.session,
-        'model': User
+        'model': User,
+        'methods': {
+            'before_get_object': before_get_object,
+            'before_update_object': before_update_object,
+            'before_delete_object': before_delete_object
+        }
     }
 
 
@@ -83,6 +125,14 @@ class RunsList(ResourceList):
 
     @roles_accepted("user")
     def before_get(self, args, kwargs):
+        pass
+
+    @roles_accepted("user")
+    def before_patch(self, args, kwargs):
+        pass
+
+    @roles_accepted("user")
+    def before_delete(self, args, kwargs):
         pass
 
     def query(self, view_kwargs):
