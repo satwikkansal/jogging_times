@@ -78,8 +78,8 @@ def drop_db():
 
 
 def populate_roles():
-    Role(name="admin", description="Admin role").save()
-    Role(name="usermanager", description="User Manager role").save()
+    Role(name="admin", description="Admin role", privileged=True).save()
+    Role(name="usermanager", description="User Manager role", privileged=True).save()
     Role(name="user", description="User role").save()
 
 

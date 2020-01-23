@@ -41,6 +41,7 @@ class BaseMixin(object):
 class Role(db.Model, BaseMixin, RoleMixin):
     name = db.Column(db.String(80), unique=True)
     description = db.Column(db.String(255))
+    privileged = db.Column(db.Boolean, default=False)
 
     def __str__(self):
         return self.name
@@ -59,8 +60,6 @@ class User(db.Model, BaseMixin, UserMixin):
     def verify_password(self, password):
         """
         Verifies the password against stored hash.
-        :param password:
-        :return:
         """
         return bcrypt.check_password_hash(self.password, password)
 
@@ -69,8 +68,16 @@ class User(db.Model, BaseMixin, UserMixin):
         return bcrypt.generate_password_hash(
             password, os.getenv('BCRYPT_LOG_ROUNDS')).decode('utf-8')
 
+    def is_privileged(self):
+        is_privileged = False
+        for role in self.roles:
+            if role.privileged:
+                is_privileged = True
+                break
+        return is_privileged
+
     def __str__(self):
-        return self.user_id
+        return self.id
 
 
 class BlacklistToken(db.Model, BaseMixin):
