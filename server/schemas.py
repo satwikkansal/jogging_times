@@ -51,3 +51,16 @@ class RunSchema(Schema):
                         related_view_kwargs={'id': '<user.id>'},
                         schema='UserSchema',
                         type_='user')
+
+
+class WeeklyRunsReport(Schema):
+    id = fields.Integer(dump_only=True)
+    average_speed = fields.Float(as_string=True, dump_only=True)
+    average_distance = fields.Float(as_string=True, dump_only=True)
+    average_duration = fields.Float(as_string=True, dump_only=True)
+    week_number = fields.Integer()
+    year = fields.Integer()
+
+    class Meta:
+        type_ = 'report'
+        self_view_many = 'weekly_summary'

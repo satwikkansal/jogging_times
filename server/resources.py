@@ -1,29 +1,14 @@
-from flask_jwt_extended import get_jwt_claims, jwt_required
+from flask_jwt_extended import jwt_required
 from flask_rest_jsonapi import Api, ResourceDetail, ResourceList, JsonApiException
-from marshmallow_jsonapi.flask import Schema
-from marshmallow_jsonapi import fields
 from sqlalchemy import func
 
 from server.models import db, User, Run, Role
-from server.schemas import UserSchema, RunSchema
+from server.schemas import UserSchema, RunSchema, WeeklyRunsReport
 from server.utils.auth_utils import get_user_from_jwt, raise_permission_denied_exception
 
 from server.utils.weather import get_current_weather_at_location
 
 api = Api()
-
-
-class WeeklyRunsReport(Schema):
-    id = fields.Integer(dump_only=True)
-    average_speed = fields.Float(as_string=True, dump_only=True)
-    average_distance = fields.Float(as_string=True, dump_only=True)
-    average_duration = fields.Float(as_string=True, dump_only=True)
-    week_number = fields.Integer()
-    year = fields.Integer()
-
-    class Meta:
-        type_ = 'report'
-        self_view_many = 'weekly_summary'
 
 
 ###
@@ -150,6 +135,7 @@ class RunsList(ResourceList):
         lat, lng = data['end_lat'], data['end_lng']
         data['weather_info'] = get_current_weather_at_location(lat, lng)
         data['date'] = data['start_time'].strftime("%Y-%m-%d")
+        data['duration'] = (data['end_time'] - data['start_time']).total_seconds()
         return self._data_layer.create_object(data, kwargs)
 
     data_layer = {
@@ -163,8 +149,11 @@ class RunsList(ResourceList):
 
 class WeeklySummary(ResourceList):
     schema = WeeklyRunsReport
+    methods = ["GET"]
 
+    @jwt_required
     def query(self, view_kwargs):
+        user = get_user_from_jwt()
         week_number = func.date_part('week', Run.start_time)
         year = func.date_part('year', Run.start_time)
         query_ = self.session.query(
@@ -173,7 +162,7 @@ class WeeklySummary(ResourceList):
             func.avg(Run.distance / Run.duration).label('average_speed'),
             week_number.label('week_number'),
             year.label('year')
-        ).group_by(year, week_number)
+        ).filter_by(user_id=user.id).group_by(year, week_number).order_by(year.desc(), week_number.desc())
         return query_
 
     data_layer = {
