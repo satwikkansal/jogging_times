@@ -1,13 +1,12 @@
-from flask_jwt_extended import get_jwt_claims
+from flask_jwt_extended import get_jwt_claims, jwt_required
 from flask_rest_jsonapi import Api, ResourceDetail, ResourceList, JsonApiException
 from marshmallow_jsonapi.flask import Schema
 from marshmallow_jsonapi import fields
 from sqlalchemy import func
 
-from server.models import db, User, Run, Role, user_datastore
+from server.models import db, User, Run, Role
 from server.schemas import UserSchema, RunSchema
-from server.utils.decorators import roles_accepted, get_user_from_jwt, \
-    raise_permission_denied_exception
+from server.utils.auth_utils import get_user_from_jwt, raise_permission_denied_exception
 
 from server.utils.weather import get_current_weather_at_location
 
@@ -123,24 +122,29 @@ class UserDetail(ResourceDetail):
 class RunsList(ResourceList):
     schema = RunSchema
 
-    @roles_accepted("user")
+    @jwt_required
     def before_get(self, args, kwargs):
         pass
 
-    @roles_accepted("user")
-    def before_patch(self, args, kwargs):
-        pass
-
-    @roles_accepted("user")
-    def before_delete(self, args, kwargs):
-        pass
-
     def query(self, view_kwargs):
+        """
+        Restricts GET query results to the user itself.
+        """
         query_ = self.session.query(Run)
-        user_id = get_jwt_claims().get('id')
-        if user_id is None:
-            raise ValueError("No ID found in the JWT token claims")
-        return query_.filter(Run.user_id == user_id)
+        user = get_user_from_jwt()
+        if not user.has_role("admin"):
+            query_ = query_.filter(Run.user_id == user.id)
+        return query_
+
+    def before_post(*args, **kwargs):
+        data = kwargs['data']
+        runner_id = data.get('user')
+        if not runner_id:
+            raise_permission_denied_exception("Please provide a User relationship for the Run")
+
+        user = get_user_from_jwt()
+        if not (user.id == runner_id or user.has_role("admin")):
+            raise_permission_denied_exception("User doesn't have permission to create Run for another user")
 
     def create_object(self, data, kwargs):
         lat, lng = data['end_lat'], data['end_lng']
@@ -183,7 +187,31 @@ class WeeklySummary(ResourceList):
 
 class RunDetail(ResourceDetail):
     schema = RunSchema
+
+    def is_self_run_or_admin_role(view_id, run=None):
+        user = get_user_from_jwt()
+        if run is None:
+            run = Run.query.filter_by(id=view_id).first()
+        return user.is_privileged() or run.user_id == user.id
+
+    def before_get_object(self, view_kwargs):
+        if not RunDetail.is_self_run_or_admin_role(view_kwargs.get('id')):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
+
+    def before_update_object(self, obj, data, view_kwargs):
+        if not RunDetail.is_self_run_or_admin_role(view_kwargs.get('id'), obj):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
+
+    def before_delete_object(self, obj, view_kwargs):
+        if not RunDetail.is_self_run_or_admin_role(view_kwargs.get('id'), obj):
+            raise_permission_denied_exception("User doesn't have permission to access the resource.")
+
     data_layer = {
         'session': db.session,
-        'model': User
+        'model': Run,
+        'methods': {
+            'before_get_object': before_get_object,
+            'before_update_object': before_update_object,
+            'before_delete_object': before_delete_object
+        }
     }
