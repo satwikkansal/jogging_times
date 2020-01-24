@@ -47,6 +47,10 @@ class BaseTestCase(TestCase):
         headers = None
         if auth_token is not None:
             headers = dict(Authorization='Bearer ' + auth_token)
+
+        if type(data) is dict:
+            data = json.dumps(data)
+
         response = self.client.post(
             endpoint,
             data=data,
