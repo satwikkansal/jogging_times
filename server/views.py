@@ -5,7 +5,7 @@ from flask_jwt_extended import (
 from sqlalchemy.exc import IntegrityError
 
 
-from server.models import bcrypt, User, BlacklistToken, user_datastore, Role
+from server.models import User, BlacklistToken, user_datastore
 from server.resources import api, UserList, UserDetail, RunsList, RunDetail, WeeklySummary
 
 auth_blueprint = Blueprint('/auth', __name__)
@@ -66,4 +66,4 @@ api.route(UserList, 'user_list', '/users')
 api.route(UserDetail, 'user_detail', '/users/<string:id>')
 api.route(RunsList, 'runs_list', '/runs')
 api.route(RunDetail, 'run_detail', '/runs/<int:id>')
-api.route(WeeklySummary, 'weekly_summary', '/runs/summary/')
+api.route(WeeklySummary, 'weekly_summary', '/runs/summary')
