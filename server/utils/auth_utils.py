@@ -7,12 +7,6 @@ from flask_rest_jsonapi import JsonApiException
 from server.models import User
 
 
-def verify_roles(user, allowed_roles):
-    for role in allowed_roles:
-        if user.has_role(role):
-            return True
-
-
 def raise_permission_denied_exception(reason):
     raise JsonApiException(
         reason,
@@ -34,11 +28,15 @@ def get_user_from_jwt():
         raise_permission_denied_exception("Unable to fetch existing user from JWT")
 
 
+"""
+def verify_roles(user, allowed_roles):
+    for role in allowed_roles:
+        if user.has_role(role):
+            return True
+
 def roles_accepted(*roles):
-    """
-    Verifies JWT exists, pulls out the users and checks for access restrictions based on the
-    allowed roles.
-    """
+    # Verifies JWT exists, pulls out the users and checks for access restrictions based on the
+    # allowed roles.
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -50,3 +48,4 @@ def roles_accepted(*roles):
                 abort(make_response(jsonify(message="User not authorized for this resource"), 403))
         return wrapper
     return decorator
+"""
