@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import pathlib
 import os
 
 from flask import Flask
@@ -11,7 +12,7 @@ TEMPLATE_FOLDER = './../client/templates'
 
 app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=STATIC_FOLDER, static_url_path='')
 
-load_dotenv('.flaskenv', verbose=True)
+load_dotenv(os.path.join(pathlib.Path(__file__).parent, '.flaskenv'), verbose=True)
 app_settings = os.getenv(
     'APP_SETTINGS'
 )
