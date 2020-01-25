@@ -8,7 +8,7 @@ from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 
 from server import app
-from server.models import db, Role
+from server.models import db, Role, User
 
 migrate = Migrate(app, db)
 manager = Manager(app)
@@ -67,6 +67,7 @@ def create_db():
     """
     db.create_all()
     populate_roles()
+    create_admin_user()
 
 
 @manager.command
@@ -81,6 +82,13 @@ def populate_roles():
     Role(name="admin", description="Admin role", privileged=True).save()
     Role(name="usermanager", description="User Manager role", privileged=True).save()
     Role(name="user", description="User role").save()
+
+
+def create_admin_user():
+    User(id='admin',
+         password=User.get_password_hash("random"),
+         email="admin@testmail.com",
+         roles=[Role.query.filter_by(name="admin").first()]).save()
 
 
 if __name__ == '__main__':
