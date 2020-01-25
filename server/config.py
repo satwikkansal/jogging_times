@@ -24,8 +24,13 @@ class DevelopmentConfig(BaseConfig):
     """
     DEBUG = True
     BCRYPT_LOG_ROUNDS = 4
+    # SQLALCHEMY_DATABASE_URI = 'postgresql://db_user:db_password@db-postgres:5432/jogging_times'
     SQLALCHEMY_DATABASE_URI = postgres_local_base + database_name
     JWT_ACCESS_TOKEN_EXPIRES = False
+
+
+class StagingConfig(DevelopmentConfig):
+    SQLALCHEMY_DATABASE_URI = 'postgresql://db_user:db_password@db-postgres:5432/jogging_times'
 
 
 class TestingConfig(BaseConfig):
@@ -45,4 +50,4 @@ class ProductionConfig(BaseConfig):
     """
     SECRET_KEY = 'some_secret'
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = 'postgresql://' + database_name
+    SQLALCHEMY_DATABASE_URI = 'postgresql://db_user:db_password@db-postgres:5432/jogging_times'
