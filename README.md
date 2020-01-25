@@ -1,5 +1,25 @@
 # ___Jogging times___
->  A backend project creating REST API that tracks jogging times of users
+>  A backend project creating REST API that tracks jogging times of users.
+
+```bash
+                        ,////,
+                        /// 7|
+                        //  _|
+                       _/_,-'
+                  _.-/'/   \   ,/;,
+               ,-' /'  \_   \ / _/
+               `\ /     _/\  ` /
+                 |     /,  `\_/
+                 |     \'
+    /\_        /`      /\
+   /' /_``--.__/\  `,. /  \
+  |_/`  `-._     `\/  `\   `.
+            `-.__/'     `\   |
+                          `\  \
+                            `\ \
+                              \_\__
+                               \___)
+```
 
 ## About 
 
